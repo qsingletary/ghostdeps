@@ -1,6 +1,6 @@
 {
   "name": "ghostdeps",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Scan and visualize npm package dependency health, security vulnerabilities, and maintenance status before installation",
   "private": true,
   "license": "MIT",
