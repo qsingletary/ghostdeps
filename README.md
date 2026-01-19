@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GhostDeps
+
+Scan and visualize npm package dependency health before installation.
 
 ## Getting Started
 
-First, run the development server:
+Install dependencies:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+`npm install`
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Run the development server:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+`npm run dev`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open http://localhost:3000 in your browser.
 
-## Learn More
+## Features
 
-To learn more about Next.js, take a look at the following resources:
+- Search npm packages with autocomplete
+- Visualize full dependency trees
+- Health scoring (healthy, warning, critical)
+- Security vulnerability detection
+- Maintenance and popularity metrics
+- Dark/light theme support
+- Responsive design
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Environment Variables
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Copy `.env.example` to `.env.local` and configure:
 
-## Deploy on Vercel
+- `UPSTASH_REDIS_REST_URL` - Redis URL for caching (optional)
+- `UPSTASH_REDIS_REST_TOKEN` - Redis token (optional)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Tech Stack
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- Zustand
+- Vitest
+
+## Project Structure
+
+- `app/page.tsx` - main page
+- `app/api/` - API routes
+  - `search/` - package search
+  - `resolve/` - dependency resolution
+  - `health/` - health scoring
+  - `package/` - package metadata
+- `components/` - UI components
+  - `SearchInput/` - search bar
+  - `SearchResults/` - autocomplete dropdown
+  - `DependencyGraph/` - tree visualization
+  - `HealthBadge/` - health indicators
+  - `NodeDetail/` - package details panel
+  - `TreeStats/` - summary statistics
+  - `ThemeToggle/` - dark/light switch
+- `hooks/` - custom React hooks
+- `stores/` - Zustand state management
+- `modules/packages/` - core business logic
+
+## Scripts
+
+- `npm run dev` - development server
+- `npm run build` - production build
+- `npm run test` - run tests
+- `npm run lint` - lint code
+- `npm run typecheck` - type checking
