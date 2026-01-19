@@ -22,28 +22,54 @@ export default function SearchInput({
   };
 
   return (
-    <div className="relative">
+    <div className="group relative">
+      <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted transition-colors group-focus-within:text-accent">
+        <SearchIcon className="h-4 w-4" />
+      </div>
+
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        className="h-10 w-full rounded-md border border-border bg-transparent px-3 text-sm placeholder:text-muted focus-ring"
+        className="h-11 w-full rounded-full border border-border bg-surface pl-11 pr-11 text-sm transition-all duration-200 placeholder:text-muted/70 hover:border-accent/30 focus:border-accent/50 focus:bg-bg focus:outline-none focus:ring-2 focus:ring-accent/20"
       />
-      {isLoading && (
-        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+
+      <div className="absolute right-4 top-1/2 -translate-y-1/2">
+        {isLoading ? (
           <Spinner />
-        </div>
-      )}
+        ) : (
+          <kbd className="hidden rounded-md border border-border bg-bg px-1.5 py-0.5 text-[10px] font-medium text-muted group-focus-within:inline-block">
+            Enter
+          </kbd>
+        )}
+      </div>
     </div>
+  );
+}
+
+function SearchIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.3-4.3" />
+    </svg>
   );
 }
 
 function Spinner() {
   return (
     <svg
-      className="h-4 w-4 animate-spin text-muted"
+      className="h-4 w-4 animate-spin text-accent"
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"

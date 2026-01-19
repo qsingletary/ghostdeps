@@ -120,7 +120,7 @@ class Container {
     const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
     const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-    if (redisUrl && redisToken) {
+    if (redisUrl && redisToken && process.env.DISABLE_CACHE !== "true") {
       console.log("[Container] Using Redis cache");
       return new RedisCache(redisUrl, redisToken);
     }
