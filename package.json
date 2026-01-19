@@ -20,13 +20,13 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "packageManager": "pnpm@10.11.0",
   "type": "module",
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "clean": "rm -rf .next node_modules"
   },
   "dependencies": {
