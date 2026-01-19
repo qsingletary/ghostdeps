@@ -111,7 +111,7 @@ export class DependencyResolver implements IDependencyResolver {
       this.inProgress.delete(nodeId);
 
       return node;
-    } catch (error) {
+    } catch {
       return this.createErrorNode(name, version, depth, parent);
     }
   }
