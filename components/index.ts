@@ -1,3 +1,5 @@
+export { default as BookmarkButton } from "./BookmarkButton/bookmark-button";
+export { default as BookmarksPanel } from "./BookmarksPanel/bookmarks-panel";
 export { default as DependencyGraph } from "./DependencyGraph/dependency-graph";
 export { default as HealthBadge } from "./HealthBadge/health-badge";
 export { default as NodeDetail } from "./NodeDetail/node-detail";

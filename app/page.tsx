@@ -3,20 +3,24 @@
 import { useState } from "react";
 import Image from "next/image";
 import {
-  ThemeToggle,
-  SearchInput,
-  SearchResults,
-  TreeStats,
+  BookmarksPanel,
   DependencyGraph,
   NodeDetail,
+  SearchInput,
+  SearchResults,
+  ThemeToggle,
+  TreeStats,
 } from "@/components";
+import { useBookmarkStore } from "@/stores";
 import { usePackageSearch, useDependencyTree, useTheme } from "@/hooks";
 import { useUIStore } from "@/stores";
 import packageJson from "@/package.json";
 
 export default function HomePage() {
   const [showResults, setShowResults] = useState(false);
+  const [showBookmarks, setShowBookmarks] = useState(false);
   const { theme } = useTheme();
+  const bookmarkCount = useBookmarkStore((s) => s.bookmarks.length);
 
   const {
     query,
@@ -76,7 +80,11 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="sm:hidden">
+            <div className="flex items-center gap-2 sm:hidden">
+              <BookmarkToggle
+                count={bookmarkCount}
+                onClick={() => setShowBookmarks(true)}
+              />
               <ThemeToggle />
             </div>
           </div>
@@ -103,7 +111,11 @@ export default function HomePage() {
               />
             </div>
 
-            <div className="hidden sm:block">
+            <div className="hidden items-center gap-2 sm:flex">
+              <BookmarkToggle
+                count={bookmarkCount}
+                onClick={() => setShowBookmarks(true)}
+              />
               <ThemeToggle />
             </div>
           </div>
@@ -133,13 +145,20 @@ export default function HomePage() {
         </div>
 
         <NodeDetail node={selectedNode} onClose={() => setSelectedNode(null)} />
+
+        <BookmarksPanel
+          isVisible={showBookmarks}
+          onClose={() => setShowBookmarks(false)}
+          onSelectPackage={(name) => {
+            setQuery(name);
+            handleSearch(name);
+          }}
+        />
       </main>
 
       <footer className="relative z-10 border-t border-border/50 bg-bg/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-center gap-2 px-4 py-2 text-xs text-muted sm:justify-between sm:px-6">
-          <span className="hidden sm:inline">
-            Dependency Health Scanner
-          </span>
+          <span className="hidden sm:inline">Dependency Health Scanner</span>
           <div className="flex items-center gap-3">
             <a
               href={packageJson.repository.url.replace(".git", "")}
@@ -259,5 +278,38 @@ function ErrorState({
         </button>
       </div>
     </div>
+  );
+}
+
+function BookmarkToggle({
+  count,
+  onClick,
+}: {
+  count: number;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface text-muted transition-all hover:border-accent/50 hover:text-accent"
+      title="Saved packages"
+    >
+      <svg
+        className="h-4 w-4"
+        viewBox="0 0 24 24"
+        fill={count > 0 ? "currentColor" : "none"}
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+      </svg>
+      {count > 0 && (
+        <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-white">
+          {count > 9 ? "9+" : count}
+        </span>
+      )}
+    </button>
   );
 }
