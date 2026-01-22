@@ -1,6 +1,6 @@
 "use client";
 import type { DependencyNode } from "@/modules/packages";
-import { HealthBadge } from "@/components";
+import { HealthBadge, BookmarkButton } from "@/components";
 
 interface ExternalLinkProps {
   href: string;
@@ -36,14 +36,22 @@ export default function NodeDetail({ node, onClose }: NodeDetailProps) {
             <XIcon className="h-4 w-4" />
           </button>
 
-          <div className="mt-2 flex items-start gap-3 sm:mt-0 sm:gap-4">
+          <div className="mt-2 flex items-start gap-3 pr-12 sm:mt-0 sm:gap-4">
             <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-accent text-white shadow-lg shadow-accent/30 sm:h-14 sm:w-14 sm:rounded-2xl">
               <PackageIcon className="h-6 w-6 sm:h-7 sm:w-7" />
             </div>
-            <div className="min-w-0 pt-0.5 sm:pt-1">
-              <h2 className="truncate text-base font-bold sm:text-lg">
-                {node.name}
-              </h2>
+            <div className="min-w-0 flex-1 pt-0.5 sm:pt-1">
+              <div className="flex items-center gap-2">
+                <h2 className="truncate text-base font-bold sm:text-lg">
+                  {node.name}
+                </h2>
+                <BookmarkButton
+                  name={node.name}
+                  version={node.version}
+                  healthScore={health.overall}
+                  healthLevel={health.level}
+                />
+              </div>
               <p className="text-xs text-muted sm:text-sm">{node.version}</p>
             </div>
           </div>
