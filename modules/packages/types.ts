@@ -36,6 +36,15 @@ export interface VulnerabilityReference {
   url: string;
 }
 
+export interface BundleSize {
+  minified: number;
+  gzipped: number;
+  dependencyCount: number;
+  hasJSModule: boolean;
+  hasSideEffects: boolean;
+  isModuleType: boolean;
+}
+
 export interface Vulnerability {
   id: string;
   aliases: string[];
@@ -65,6 +74,7 @@ export interface HealthBreakdown {
   popularity: number;
   activity: number;
   security: number;
+  size: number;
 }
 
 export interface HealthScore {
@@ -72,6 +82,7 @@ export interface HealthScore {
   level: HealthLevel;
   breakdown: HealthBreakdown;
   vulnerabilities: Vulnerability[];
+  bundle: BundleSize | null;
   lastPublish: string;
   weeklyDownloads: number;
   openIssues: number;

@@ -3,3 +3,4 @@ export { RedisCache } from "./redis-cache";
 export { NpmRegistryClient } from "./npm-registry";
 export { NpmsApiClient } from "./npms-api";
 export { OsvClient } from "./osv-client";
+export { BundlephobiaClient } from "./bundlephobia";

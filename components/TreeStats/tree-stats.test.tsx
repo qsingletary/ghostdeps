@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import TreeStats from "./tree-stats";
-import type { TreeStats as TreeStatsType } from "@/modules/packages";
+import type { BundleSize, TreeStats as TreeStatsType } from "@/modules/packages";
 
 describe("TreeStats", () => {
   const defaultStats: TreeStatsType = {
@@ -125,6 +125,41 @@ describe("TreeStats", () => {
       render(<TreeStats stats={singleStats} />);
 
       expect(screen.getAllByText("1")).toHaveLength(3); // total, unique, healthy
+    });
+  });
+
+  describe("root bundle pill", () => {
+    const bundle = (overrides: Partial<BundleSize> = {}): BundleSize => ({
+      minified: 100_000,
+      gzipped: 24_576,
+      dependencyCount: 0,
+      hasJSModule: true,
+      hasSideEffects: false,
+      isModuleType: true,
+      ...overrides,
+    });
+
+    it("renders a bundle pill when rootBundle is provided", () => {
+      render(<TreeStats stats={defaultStats} rootBundle={bundle()} />);
+      expect(screen.getByText("Bundle")).toBeInTheDocument();
+      expect(screen.getByText("24.0KB")).toBeInTheDocument();
+    });
+
+    it("formats large bundles in MB", () => {
+      render(
+        <TreeStats stats={defaultStats} rootBundle={bundle({ gzipped: 2 * 1024 * 1024 })} />,
+      );
+      expect(screen.getByText("2.0MB")).toBeInTheDocument();
+    });
+
+    it("does not render the pill when rootBundle is null", () => {
+      render(<TreeStats stats={defaultStats} rootBundle={null} />);
+      expect(screen.queryByText("Bundle")).not.toBeInTheDocument();
+    });
+
+    it("does not render the pill when rootBundle is omitted", () => {
+      render(<TreeStats stats={defaultStats} />);
+      expect(screen.queryByText("Bundle")).not.toBeInTheDocument();
     });
   });
 });

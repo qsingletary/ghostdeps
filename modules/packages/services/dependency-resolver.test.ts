@@ -23,8 +23,15 @@ const createMockHealthService = (): IHealthService => ({
 const createHealthScore = (overall = 85): HealthScore => ({
   overall,
   level: overall >= 70 ? "healthy" : overall >= 40 ? "warning" : "critical",
-  breakdown: { maintenance: 90, popularity: 80, activity: 85, security: 100 },
+  breakdown: {
+    maintenance: 90,
+    popularity: 80,
+    activity: 85,
+    security: 100,
+    size: 90,
+  },
   vulnerabilities: [],
+  bundle: null,
   lastPublish: "2024-01-01",
   weeklyDownloads: 50000,
   openIssues: 10,

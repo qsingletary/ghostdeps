@@ -1,10 +1,14 @@
-import type { TreeStats as TreeStatsType } from "@/modules/packages";
+import type {
+  BundleSize,
+  TreeStats as TreeStatsType,
+} from "@/modules/packages";
 
 interface TreeStatsProps {
   stats: TreeStatsType;
+  rootBundle?: BundleSize | null;
 }
 
-export default function TreeStats({ stats }: TreeStatsProps) {
+export default function TreeStats({ stats, rootBundle }: TreeStatsProps) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -23,6 +27,12 @@ export default function TreeStats({ stats }: TreeStatsProps) {
           value={stats.maxDepth}
           icon={<GitBranchIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />}
         />
+        {rootBundle && (
+          <BundlePill
+            gzipped={rootBundle.gzipped}
+            icon={<BoxIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />}
+          />
+        )}
       </div>
 
       <div className="hidden h-6 w-px bg-border sm:block" />
@@ -62,6 +72,30 @@ function StatPill({
       <span className="text-accent">{icon}</span>
       <span className="text-[10px] text-muted sm:text-xs">{label}</span>
       <span className="text-xs font-bold sm:text-sm">{value}</span>
+    </div>
+  );
+}
+
+function BundlePill({
+  gzipped,
+  icon,
+}: {
+  gzipped: number;
+  icon: React.ReactNode;
+}) {
+  const label =
+    gzipped >= 1024 * 1024
+      ? `${(gzipped / (1024 * 1024)).toFixed(1)}MB`
+      : gzipped >= 1024
+        ? `${(gzipped / 1024).toFixed(1)}KB`
+        : `${gzipped}B`;
+
+  return (
+    <div className="flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 sm:gap-2 sm:px-3 sm:py-1.5">
+      <span className="text-accent">{icon}</span>
+      <span className="text-[10px] text-muted sm:text-xs">Bundle</span>
+      <span className="text-xs font-bold sm:text-sm">{label}</span>
+      <span className="text-[9px] text-muted sm:text-[10px]">gzip</span>
     </div>
   );
 }
@@ -133,6 +167,23 @@ function GitBranchIcon({ className }: { className?: string }) {
       <circle cx="18" cy="6" r="3" />
       <circle cx="6" cy="18" r="3" />
       <path d="M18 9a9 9 0 0 1-9 9" />
+    </svg>
+  );
+}
+
+function BoxIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+      <path d="M3.29 7 12 12l8.71-5M12 22V12" />
     </svg>
   );
 }

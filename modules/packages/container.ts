@@ -3,6 +3,7 @@ import {
   INpmClient,
   INpmsClient,
   IOsvClient,
+  IBundleClient,
   IPackageRepository,
   IHealthService,
   IDependencyResolver,
@@ -14,6 +15,7 @@ import {
   NpmRegistryClient,
   NpmsApiClient,
   OsvClient,
+  BundlephobiaClient,
 } from "./adapters";
 import { PackageRepository } from "./repositories";
 import { HealthService, DependencyResolver } from "./services";
@@ -29,6 +31,7 @@ class Container {
   private npmClient: INpmClient | null = null;
   private npmsClient: INpmsClient | null = null;
   private osvClient: IOsvClient | null = null;
+  private bundleClient: IBundleClient | null = null;
   private packageRepository: IPackageRepository | null = null;
   private healthService: IHealthService | null = null;
   private dependencyResolver: IDependencyResolver | null = null;
@@ -74,6 +77,16 @@ class Container {
   }
 
   /**
+   * Get or create Bundlephobia bundle-size client
+   */
+  getBundleClient(): IBundleClient {
+    if (!this.bundleClient) {
+      this.bundleClient = new BundlephobiaClient();
+    }
+    return this.bundleClient;
+  }
+
+  /**
    * Get or create package repository
    */
   getPackageRepository(): IPackageRepository {
@@ -95,6 +108,7 @@ class Container {
         this.getPackageRepository(),
         this.getNpmsClient(),
         this.getOsvClient(),
+        this.getBundleClient(),
         this.getCache(),
       );
     }
@@ -123,6 +137,7 @@ class Container {
     this.npmClient = null;
     this.npmsClient = null;
     this.osvClient = null;
+    this.bundleClient = null;
     this.packageRepository = null;
     this.healthService = null;
     this.dependencyResolver = null;

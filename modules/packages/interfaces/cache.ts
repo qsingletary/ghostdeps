@@ -16,6 +16,10 @@ export const CacheKeys = {
   npms: (name: string) => `npms:${name}`,
   osv: (name: string, version?: string) =>
     version && version !== "latest" ? `osv:${name}:${version}` : `osv:${name}`,
+  bundle: (name: string, version?: string) =>
+    version && version !== "latest"
+      ? `bundle:${name}:${version}`
+      : `bundle:${name}`,
 } as const;
 
 export const CacheTTL = {
@@ -25,4 +29,5 @@ export const CacheTTL = {
   SEARCH: 300,
   NPMS: 21600,
   OSV: 10800,
+  BUNDLE: 86400,
 } as const;

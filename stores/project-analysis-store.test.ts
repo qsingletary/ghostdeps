@@ -12,8 +12,15 @@ import type { HealthLevel, HealthScore } from "@/modules/packages";
 const score = (overall: number, level: HealthLevel = "healthy"): HealthScore => ({
   overall,
   level,
-  breakdown: { maintenance: overall, popularity: overall, activity: overall, security: overall },
+  breakdown: {
+    maintenance: overall,
+    popularity: overall,
+    activity: overall,
+    security: overall,
+    size: overall,
+  },
   vulnerabilities: [],
+  bundle: null,
   lastPublish: "2024-01-01",
   weeklyDownloads: 1000,
   openIssues: 0,

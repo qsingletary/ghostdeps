@@ -4,6 +4,7 @@ import type {
   IPackageRepository,
   INpmsClient,
   IOsvClient,
+  IBundleClient,
   ICache,
 } from "../interfaces";
 import type {
@@ -11,6 +12,7 @@ import type {
   NpmsPackageData,
   HealthScore,
   Vulnerability,
+  BundleSize,
 } from "../types";
 
 const createMockCache = (): ICache => ({
@@ -32,6 +34,23 @@ const createMockNpmsClient = (): INpmsClient => ({
 const createMockOsvClient = (): IOsvClient => ({
   fetchVulnerabilities: vi.fn().mockResolvedValue([]),
   fetchVulnerabilitiesBatch: vi.fn().mockResolvedValue(new Map()),
+});
+
+const createMockBundleClient = (): IBundleClient => ({
+  fetchBundleSize: vi.fn().mockResolvedValue(null),
+  fetchBundleSizesBatch: vi.fn().mockResolvedValue(new Map()),
+});
+
+const createBundle = (
+  overrides: Partial<BundleSize> = {},
+): BundleSize => ({
+  minified: 50_000,
+  gzipped: 20_000,
+  dependencyCount: 0,
+  hasJSModule: true,
+  hasSideEffects: false,
+  isModuleType: true,
+  ...overrides,
 });
 
 const createNpmsData = (
@@ -78,16 +97,19 @@ describe("HealthService", () => {
   let mockPackageRepo: IPackageRepository;
   let mockNpmsClient: INpmsClient;
   let mockOsvClient: IOsvClient;
+  let mockBundleClient: IBundleClient;
 
   beforeEach(() => {
     mockCache = createMockCache();
     mockPackageRepo = createMockPackageRepository();
     mockNpmsClient = createMockNpmsClient();
     mockOsvClient = createMockOsvClient();
+    mockBundleClient = createMockBundleClient();
     service = new HealthService(
       mockPackageRepo,
       mockNpmsClient,
       mockOsvClient,
+      mockBundleClient,
       mockCache,
     );
   });
@@ -97,8 +119,9 @@ describe("HealthService", () => {
       const cachedScore: HealthScore = {
         overall: 85,
         level: "healthy",
-        breakdown: { maintenance: 90, popularity: 80, activity: 85, security: 100 },
+        breakdown: { maintenance: 90, popularity: 80, activity: 85, security: 100, size: 90 },
         vulnerabilities: [],
+        bundle: null,
         lastPublish: "2024-01-01",
         weeklyDownloads: 50000,
         openIssues: 10,
@@ -190,8 +213,9 @@ describe("HealthService", () => {
       const cachedScore: HealthScore = {
         overall: 85,
         level: "healthy",
-        breakdown: { maintenance: 90, popularity: 80, activity: 85, security: 100 },
+        breakdown: { maintenance: 90, popularity: 80, activity: 85, security: 100, size: 90 },
         vulnerabilities: [],
+        bundle: null,
         lastPublish: "",
         weeklyDownloads: 0,
         openIssues: 0,
@@ -205,6 +229,7 @@ describe("HealthService", () => {
       expect(result.get("lodash")).toEqual(cachedScore);
       expect(mockNpmsClient.fetchScoresBatch).not.toHaveBeenCalled();
       expect(mockOsvClient.fetchVulnerabilitiesBatch).not.toHaveBeenCalled();
+      expect(mockBundleClient.fetchBundleSizesBatch).not.toHaveBeenCalled();
     });
 
     it("should fetch uncached packages in batch", async () => {
@@ -222,6 +247,13 @@ describe("HealthService", () => {
           ["react", []],
         ]),
       );
+      const lodashBundle = createBundle({ gzipped: 24_000 });
+      vi.mocked(mockBundleClient.fetchBundleSizesBatch).mockResolvedValue(
+        new Map([
+          ["lodash", lodashBundle],
+          ["react", null],
+        ]),
+      );
 
       const result = await service.calculateBatch(["lodash", "react"]);
 
@@ -231,8 +263,14 @@ describe("HealthService", () => {
         { name: "lodash" },
         { name: "react" },
       ]);
+      expect(mockBundleClient.fetchBundleSizesBatch).toHaveBeenCalledWith([
+        { name: "lodash" },
+        { name: "react" },
+      ]);
       expect(result.get("lodash")!.vulnerabilities).toHaveLength(1);
+      expect(result.get("lodash")!.bundle).toEqual(lodashBundle);
       expect(result.get("react")!.vulnerabilities).toHaveLength(0);
+      expect(result.get("react")!.bundle).toBeNull();
     });
   });
 
@@ -460,8 +498,108 @@ describe("HealthService", () => {
     });
   });
 
+  describe("size score calculation", () => {
+    it("returns 50 (neutral) when no bundle data is available", async () => {
+      vi.mocked(mockCache.get).mockResolvedValue(null);
+      vi.mocked(mockPackageRepo.findByName).mockResolvedValue(createPackageMetadata());
+      vi.mocked(mockNpmsClient.fetchScore).mockResolvedValue(createNpmsData());
+      vi.mocked(mockBundleClient.fetchBundleSize).mockResolvedValue(null);
+
+      const result = await service.calculate("no-bundle");
+      expect(result.breakdown.size).toBe(50);
+      expect(result.bundle).toBeNull();
+    });
+
+    it("scores tiny gzipped bundles (<=10KB) at 100, plus tree-shake bonus is capped at 100", async () => {
+      vi.mocked(mockCache.get).mockResolvedValue(null);
+      vi.mocked(mockPackageRepo.findByName).mockResolvedValue(createPackageMetadata());
+      vi.mocked(mockNpmsClient.fetchScore).mockResolvedValue(createNpmsData());
+      vi.mocked(mockBundleClient.fetchBundleSize).mockResolvedValue(
+        createBundle({ gzipped: 5_000, hasJSModule: true, hasSideEffects: false }),
+      );
+
+      const result = await service.calculate("tiny");
+      expect(result.breakdown.size).toBe(100);
+    });
+
+    it("scores mid-size bundles around 30KB lower than tiny ones", async () => {
+      vi.mocked(mockCache.get).mockResolvedValue(null);
+      vi.mocked(mockPackageRepo.findByName).mockResolvedValue(createPackageMetadata());
+      vi.mocked(mockNpmsClient.fetchScore).mockResolvedValue(createNpmsData());
+      vi.mocked(mockBundleClient.fetchBundleSize).mockResolvedValue(
+        createBundle({
+          gzipped: 30 * 1024,
+          hasJSModule: false,
+          hasSideEffects: true,
+        }),
+      );
+
+      const result = await service.calculate("mid");
+      // 30KB → 100 - ((30-10)/40)*20 = 90, no tree-shake bonus
+      expect(result.breakdown.size).toBe(90);
+    });
+
+    it("scores huge bundles (>500KB) close to zero", async () => {
+      vi.mocked(mockCache.get).mockResolvedValue(null);
+      vi.mocked(mockPackageRepo.findByName).mockResolvedValue(createPackageMetadata());
+      vi.mocked(mockNpmsClient.fetchScore).mockResolvedValue(createNpmsData());
+      vi.mocked(mockBundleClient.fetchBundleSize).mockResolvedValue(
+        createBundle({
+          gzipped: 800 * 1024,
+          hasJSModule: false,
+          hasSideEffects: true,
+        }),
+      );
+
+      const result = await service.calculate("huge");
+      // 800KB → 20 - ((800-500)/500)*20 = 8, no tree-shake bonus
+      expect(result.breakdown.size).toBeLessThan(15);
+    });
+
+    it("adds the tree-shake bonus when ESM + no side effects", async () => {
+      vi.mocked(mockCache.get).mockResolvedValue(null);
+      vi.mocked(mockPackageRepo.findByName).mockResolvedValue(createPackageMetadata());
+      vi.mocked(mockNpmsClient.fetchScore).mockResolvedValue(createNpmsData());
+      vi.mocked(mockBundleClient.fetchBundleSize).mockResolvedValue(
+        createBundle({
+          gzipped: 30 * 1024,
+          hasJSModule: true,
+          hasSideEffects: false,
+        }),
+      );
+
+      const result = await service.calculate("tree-shakable");
+      // 90 + 5 bonus = 95
+      expect(result.breakdown.size).toBe(95);
+    });
+
+    it("passes the version through to the bundle client", async () => {
+      vi.mocked(mockCache.get).mockResolvedValue(null);
+      vi.mocked(mockPackageRepo.findByName).mockResolvedValue(createPackageMetadata());
+      vi.mocked(mockNpmsClient.fetchScore).mockResolvedValue(createNpmsData());
+
+      await service.calculate("lodash", "4.17.21");
+
+      expect(mockBundleClient.fetchBundleSize).toHaveBeenCalledWith(
+        "lodash",
+        "4.17.21",
+      );
+    });
+
+    it("attaches the bundle data to the resulting health score", async () => {
+      vi.mocked(mockCache.get).mockResolvedValue(null);
+      vi.mocked(mockPackageRepo.findByName).mockResolvedValue(createPackageMetadata());
+      vi.mocked(mockNpmsClient.fetchScore).mockResolvedValue(createNpmsData());
+      const bundle = createBundle({ gzipped: 12_345 });
+      vi.mocked(mockBundleClient.fetchBundleSize).mockResolvedValue(bundle);
+
+      const result = await service.calculate("with-bundle");
+      expect(result.bundle).toEqual(bundle);
+    });
+  });
+
   describe("overall score calculation", () => {
-    it("weights scores: 35% maint, 15% pop, 20% act, 30% sec", async () => {
+    it("weights scores: 30% maint, 10% pop, 15% act, 30% sec, 15% size", async () => {
       vi.mocked(mockCache.get).mockResolvedValue(null);
       vi.mocked(mockPackageRepo.findByName).mockResolvedValue(
         createPackageMetadata({
@@ -474,12 +612,19 @@ describe("HealthService", () => {
           github: { issues: { openCount: 0, totalCount: 0 } },
         }),
       );
+      vi.mocked(mockBundleClient.fetchBundleSize).mockResolvedValue(
+        createBundle({
+          gzipped: 5_000,
+          hasJSModule: false,
+          hasSideEffects: true,
+        }),
+      );
 
       const result = await service.calculate("perfect-package");
 
-      // Maintenance: 100, Popularity: 100, Activity: 50, Security: 100
-      // Overall: 100*0.35 + 100*0.15 + 50*0.20 + 100*0.30 = 35 + 15 + 10 + 30 = 90
-      expect(result.overall).toBe(90);
+      // Maintenance: 100, Popularity: 100, Activity: 50, Security: 100, Size: 100
+      // 100*0.30 + 100*0.10 + 50*0.15 + 100*0.30 + 100*0.15 = 30 + 10 + 7.5 + 30 + 15 = 92.5 → 93
+      expect(result.overall).toBe(93);
       expect(result.level).toBe("healthy");
     });
   });
