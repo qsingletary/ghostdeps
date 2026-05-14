@@ -6,6 +6,7 @@ import {
   BookmarksPanel,
   DependencyGraph,
   NodeDetail,
+  ProjectAnalysisPanel,
   SearchInput,
   SearchResults,
   ThemeToggle,
@@ -19,6 +20,7 @@ import packageJson from "@/package.json";
 export default function HomePage() {
   const [showResults, setShowResults] = useState(false);
   const [showBookmarks, setShowBookmarks] = useState(false);
+  const [showProjectAnalysis, setShowProjectAnalysis] = useState(false);
   const { theme } = useTheme();
   const bookmarkCount = useBookmarkStore((s) => s.bookmarks.length);
 
@@ -81,6 +83,9 @@ export default function HomePage() {
             </div>
 
             <div className="flex items-center gap-2 sm:hidden">
+              <ProjectAnalysisToggle
+                onClick={() => setShowProjectAnalysis(true)}
+              />
               <BookmarkToggle
                 count={bookmarkCount}
                 onClick={() => setShowBookmarks(true)}
@@ -112,6 +117,9 @@ export default function HomePage() {
             </div>
 
             <div className="hidden items-center gap-2 sm:flex">
+              <ProjectAnalysisToggle
+                onClick={() => setShowProjectAnalysis(true)}
+              />
               <BookmarkToggle
                 count={bookmarkCount}
                 onClick={() => setShowBookmarks(true)}
@@ -149,6 +157,15 @@ export default function HomePage() {
         <BookmarksPanel
           isVisible={showBookmarks}
           onClose={() => setShowBookmarks(false)}
+          onSelectPackage={(name) => {
+            setQuery(name);
+            handleSearch(name);
+          }}
+        />
+
+        <ProjectAnalysisPanel
+          isVisible={showProjectAnalysis}
+          onClose={() => setShowProjectAnalysis(false)}
           onSelectPackage={(name) => {
             setQuery(name);
             handleSearch(name);
@@ -310,6 +327,28 @@ function BookmarkToggle({
           {count > 9 ? "9+" : count}
         </span>
       )}
+    </button>
+  );
+}
+
+function ProjectAnalysisToggle({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface text-muted transition-all hover:border-accent/50 hover:text-accent"
+      title="Analyze project"
+    >
+      <svg
+        className="h-4 w-4"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+      </svg>
     </button>
   );
 }

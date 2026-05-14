@@ -28,3 +28,10 @@ export type {
   IHealthService,
   IDependencyResolver,
 } from "./interfaces";
+
+export {
+  parsePackageJson,
+  type ParsedPackageJson,
+  type ParseError,
+  type ParseResult,
+} from "./utils";
