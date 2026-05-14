@@ -12,10 +12,11 @@ interface RouteParams {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { name: rawName } = await params;
   const name = decodeURIComponent(rawName);
+  const version = request.nextUrl.searchParams.get("version") ?? undefined;
 
   try {
     const healthService = container.getHealthService();
-    const score = await healthService.calculate(name);
+    const score = await healthService.calculate(name, version);
 
     return NextResponse.json(score);
   } catch (error) {

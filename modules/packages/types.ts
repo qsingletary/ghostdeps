@@ -11,7 +11,8 @@ export interface NpmPackageMetadata {
   maintainers?: Array<{ name: string; email?: string }>;
 }
 
-// npms.io (external)
+// npms.io (external) — used for popularity + GitHub issue signals.
+// Vulnerability data is sourced from OSV.dev instead and lives on HealthScore.
 export interface NpmsPackageData {
   score: number;
   quality: number;
@@ -21,14 +22,33 @@ export interface NpmsPackageData {
   github?: {
     issues: { openCount: number; totalCount: number };
   };
-  vulnerabilities: Vulnerability[];
+}
+
+export type VulnerabilitySeverity = "low" | "moderate" | "high" | "critical";
+
+export interface AffectedRange {
+  introduced: string;
+  fixed?: string;
+}
+
+export interface VulnerabilityReference {
+  type: string;
+  url: string;
 }
 
 export interface Vulnerability {
   id: string;
-  severity: "low" | "moderate" | "high" | "critical";
-  title: string;
-  url?: string;
+  aliases: string[];
+  summary: string;
+  details?: string;
+  severity: VulnerabilitySeverity;
+  cvssScore?: number;
+  cvssVector?: string;
+  affectedRanges: AffectedRange[];
+  patchedVersions: string[];
+  references: VulnerabilityReference[];
+  published?: string;
+  modified?: string;
 }
 
 export interface PackageSearchResult {

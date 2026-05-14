@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import NodeDetail from "./node-detail";
-import type { DependencyNode } from "@/modules/packages";
+import type { DependencyNode, Vulnerability } from "@/modules/packages";
 
 describe("NodeDetail", () => {
   const createNode = (overrides = {}): DependencyNode => ({
@@ -244,6 +244,42 @@ describe("NodeDetail", () => {
         "href",
         "https://www.npmjs.com/package/@org/package",
       );
+    });
+  });
+
+  describe("vulnerabilities", () => {
+    const sampleVuln: Vulnerability = {
+      id: "GHSA-29mw-wpgm-hmr9",
+      aliases: ["CVE-2020-28500"],
+      summary: "ReDoS in lodash",
+      severity: "moderate",
+      cvssScore: 5.3,
+      affectedRanges: [{ introduced: "0", fixed: "4.17.21" }],
+      patchedVersions: ["4.17.21"],
+      references: [
+        { type: "ADVISORY", url: "https://github.com/advisories/GHSA-29mw" },
+      ],
+    };
+
+    it("does not render the vulnerability section when there are no vulns", () => {
+      render(<NodeDetail {...defaultProps} />);
+      expect(screen.queryByText(/Vulnerabilities/)).not.toBeInTheDocument();
+    });
+
+    it("renders vuln id, summary, severity, and fix-version chip when present", () => {
+      const node = createNode({
+        health: {
+          ...createNode().health,
+          vulnerabilities: [sampleVuln],
+        },
+      });
+      render(<NodeDetail node={node} onClose={vi.fn()} />);
+
+      expect(screen.getByText(/Vulnerabilities \(1\)/)).toBeInTheDocument();
+      expect(screen.getByText("GHSA-29mw-wpgm-hmr9")).toBeInTheDocument();
+      expect(screen.getByText("ReDoS in lodash")).toBeInTheDocument();
+      expect(screen.getByText("moderate")).toBeInTheDocument();
+      expect(screen.getByText(/Update to ≥4\.17\.21/)).toBeInTheDocument();
     });
   });
 });

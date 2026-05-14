@@ -1,9 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { HealthService } from "./health-service";
-import type { IPackageRepository, INpmsClient, ICache } from "../interfaces";
-import type { NpmPackageMetadata, NpmsPackageData, HealthScore } from "../types";
+import type {
+  IPackageRepository,
+  INpmsClient,
+  IOsvClient,
+  ICache,
+} from "../interfaces";
+import type {
+  NpmPackageMetadata,
+  NpmsPackageData,
+  HealthScore,
+  Vulnerability,
+} from "../types";
 
-// Mock implementations
 const createMockCache = (): ICache => ({
   get: vi.fn().mockResolvedValue(null),
   set: vi.fn().mockResolvedValue(undefined),
@@ -20,13 +29,19 @@ const createMockNpmsClient = (): INpmsClient => ({
   fetchScoresBatch: vi.fn(),
 });
 
-const createNpmsData = (overrides: Partial<NpmsPackageData> = {}): NpmsPackageData => ({
+const createMockOsvClient = (): IOsvClient => ({
+  fetchVulnerabilities: vi.fn().mockResolvedValue([]),
+  fetchVulnerabilitiesBatch: vi.fn().mockResolvedValue(new Map()),
+});
+
+const createNpmsData = (
+  overrides: Partial<NpmsPackageData> = {},
+): NpmsPackageData => ({
   score: 0.8,
   quality: 0.7,
   popularity: 0.6,
   maintenance: 0.9,
   downloads: { weekly: 100000 },
-  vulnerabilities: [],
   ...overrides,
 });
 
@@ -43,17 +58,38 @@ const createPackageMetadata = (
   ...overrides,
 });
 
+const createVuln = (
+  severity: Vulnerability["severity"],
+  overrides: Partial<Vulnerability> = {},
+): Vulnerability => ({
+  id: `GHSA-${severity}-${Math.random().toString(36).slice(2, 6)}`,
+  aliases: [],
+  summary: `${severity} test vuln`,
+  severity,
+  affectedRanges: [],
+  patchedVersions: [],
+  references: [],
+  ...overrides,
+});
+
 describe("HealthService", () => {
   let service: HealthService;
   let mockCache: ICache;
   let mockPackageRepo: IPackageRepository;
   let mockNpmsClient: INpmsClient;
+  let mockOsvClient: IOsvClient;
 
   beforeEach(() => {
     mockCache = createMockCache();
     mockPackageRepo = createMockPackageRepository();
     mockNpmsClient = createMockNpmsClient();
-    service = new HealthService(mockPackageRepo, mockNpmsClient, mockCache);
+    mockOsvClient = createMockOsvClient();
+    service = new HealthService(
+      mockPackageRepo,
+      mockNpmsClient,
+      mockOsvClient,
+      mockCache,
+    );
   });
 
   describe("calculate", () => {
@@ -75,6 +111,35 @@ describe("HealthService", () => {
       expect(result).toEqual(cachedScore);
       expect(mockPackageRepo.findByName).not.toHaveBeenCalled();
       expect(mockNpmsClient.fetchScore).not.toHaveBeenCalled();
+      expect(mockOsvClient.fetchVulnerabilities).not.toHaveBeenCalled();
+    });
+
+    it("uses a version-specific cache key when a concrete version is given", async () => {
+      vi.mocked(mockCache.get).mockResolvedValue(null);
+      vi.mocked(mockPackageRepo.findByName).mockResolvedValue(createPackageMetadata());
+      vi.mocked(mockNpmsClient.fetchScore).mockResolvedValue(createNpmsData());
+
+      await service.calculate("lodash", "4.17.20");
+
+      expect(mockCache.get).toHaveBeenCalledWith("health:lodash:4.17.20");
+      expect(mockCache.set).toHaveBeenCalledWith(
+        "health:lodash:4.17.20",
+        expect.anything(),
+        expect.anything(),
+      );
+    });
+
+    it("passes the version through to the OSV client", async () => {
+      vi.mocked(mockCache.get).mockResolvedValue(null);
+      vi.mocked(mockPackageRepo.findByName).mockResolvedValue(createPackageMetadata());
+      vi.mocked(mockNpmsClient.fetchScore).mockResolvedValue(createNpmsData());
+
+      await service.calculate("lodash", "4.17.20");
+
+      expect(mockOsvClient.fetchVulnerabilities).toHaveBeenCalledWith(
+        "lodash",
+        "4.17.20",
+      );
     });
 
     it("should fetch and compute score when not cached", async () => {
@@ -86,10 +151,26 @@ describe("HealthService", () => {
 
       expect(mockPackageRepo.findByName).toHaveBeenCalledWith("test-package");
       expect(mockNpmsClient.fetchScore).toHaveBeenCalledWith("test-package");
+      expect(mockOsvClient.fetchVulnerabilities).toHaveBeenCalledWith(
+        "test-package",
+        undefined,
+      );
       expect(mockCache.set).toHaveBeenCalled();
       expect(result).toHaveProperty("overall");
       expect(result).toHaveProperty("level");
       expect(result).toHaveProperty("breakdown");
+    });
+
+    it("attaches vulnerabilities from OSV to the resulting health score", async () => {
+      vi.mocked(mockCache.get).mockResolvedValue(null);
+      vi.mocked(mockPackageRepo.findByName).mockResolvedValue(createPackageMetadata());
+      vi.mocked(mockNpmsClient.fetchScore).mockResolvedValue(createNpmsData());
+      const vulns = [createVuln("high"), createVuln("low")];
+      vi.mocked(mockOsvClient.fetchVulnerabilities).mockResolvedValue(vulns);
+
+      const result = await service.calculate("test-package");
+
+      expect(result.vulnerabilities).toEqual(vulns);
     });
 
     it("should handle package repository errors gracefully", async () => {
@@ -123,6 +204,7 @@ describe("HealthService", () => {
       expect(result.size).toBe(2);
       expect(result.get("lodash")).toEqual(cachedScore);
       expect(mockNpmsClient.fetchScoresBatch).not.toHaveBeenCalled();
+      expect(mockOsvClient.fetchVulnerabilitiesBatch).not.toHaveBeenCalled();
     });
 
     it("should fetch uncached packages in batch", async () => {
@@ -134,11 +216,23 @@ describe("HealthService", () => {
           ["react", createNpmsData()],
         ]),
       );
+      vi.mocked(mockOsvClient.fetchVulnerabilitiesBatch).mockResolvedValue(
+        new Map([
+          ["lodash", [createVuln("critical")]],
+          ["react", []],
+        ]),
+      );
 
       const result = await service.calculateBatch(["lodash", "react"]);
 
       expect(result.size).toBe(2);
       expect(mockNpmsClient.fetchScoresBatch).toHaveBeenCalledWith(["lodash", "react"]);
+      expect(mockOsvClient.fetchVulnerabilitiesBatch).toHaveBeenCalledWith([
+        { name: "lodash" },
+        { name: "react" },
+      ]);
+      expect(result.get("lodash")!.vulnerabilities).toHaveLength(1);
+      expect(result.get("react")!.vulnerabilities).toHaveLength(0);
     });
   });
 
@@ -254,9 +348,8 @@ describe("HealthService", () => {
     it("should return 100 for packages with no vulnerabilities", async () => {
       vi.mocked(mockCache.get).mockResolvedValue(null);
       vi.mocked(mockPackageRepo.findByName).mockResolvedValue(createPackageMetadata());
-      vi.mocked(mockNpmsClient.fetchScore).mockResolvedValue(
-        createNpmsData({ vulnerabilities: [] }),
-      );
+      vi.mocked(mockNpmsClient.fetchScore).mockResolvedValue(createNpmsData());
+      vi.mocked(mockOsvClient.fetchVulnerabilities).mockResolvedValue([]);
 
       const result = await service.calculate("secure-package");
 
@@ -266,11 +359,10 @@ describe("HealthService", () => {
     it("should deduct 40 points for critical vulnerabilities", async () => {
       vi.mocked(mockCache.get).mockResolvedValue(null);
       vi.mocked(mockPackageRepo.findByName).mockResolvedValue(createPackageMetadata());
-      vi.mocked(mockNpmsClient.fetchScore).mockResolvedValue(
-        createNpmsData({
-          vulnerabilities: [{ id: "1", severity: "critical", title: "Test" }],
-        }),
-      );
+      vi.mocked(mockNpmsClient.fetchScore).mockResolvedValue(createNpmsData());
+      vi.mocked(mockOsvClient.fetchVulnerabilities).mockResolvedValue([
+        createVuln("critical"),
+      ]);
 
       const result = await service.calculate("critical-vuln-package");
 
@@ -280,29 +372,41 @@ describe("HealthService", () => {
     it("should deduct 25 points for high vulnerabilities", async () => {
       vi.mocked(mockCache.get).mockResolvedValue(null);
       vi.mocked(mockPackageRepo.findByName).mockResolvedValue(createPackageMetadata());
-      vi.mocked(mockNpmsClient.fetchScore).mockResolvedValue(
-        createNpmsData({
-          vulnerabilities: [{ id: "1", severity: "high", title: "Test" }],
-        }),
-      );
+      vi.mocked(mockNpmsClient.fetchScore).mockResolvedValue(createNpmsData());
+      vi.mocked(mockOsvClient.fetchVulnerabilities).mockResolvedValue([
+        createVuln("high"),
+      ]);
 
       const result = await service.calculate("high-vuln-package");
 
       expect(result.breakdown.security).toBe(75);
     });
 
+    it("stacks severity penalties from multiple vulns", async () => {
+      vi.mocked(mockCache.get).mockResolvedValue(null);
+      vi.mocked(mockPackageRepo.findByName).mockResolvedValue(createPackageMetadata());
+      vi.mocked(mockNpmsClient.fetchScore).mockResolvedValue(createNpmsData());
+      vi.mocked(mockOsvClient.fetchVulnerabilities).mockResolvedValue([
+        createVuln("high"),
+        createVuln("moderate"),
+        createVuln("low"),
+      ]);
+
+      const result = await service.calculate("multi-vuln-package");
+
+      // 100 - 25 - 10 - 5 = 60
+      expect(result.breakdown.security).toBe(60);
+    });
+
     it("should not go below 0 for many vulnerabilities", async () => {
       vi.mocked(mockCache.get).mockResolvedValue(null);
       vi.mocked(mockPackageRepo.findByName).mockResolvedValue(createPackageMetadata());
-      vi.mocked(mockNpmsClient.fetchScore).mockResolvedValue(
-        createNpmsData({
-          vulnerabilities: [
-            { id: "1", severity: "critical", title: "Test1" },
-            { id: "2", severity: "critical", title: "Test2" },
-            { id: "3", severity: "critical", title: "Test3" },
-          ],
-        }),
-      );
+      vi.mocked(mockNpmsClient.fetchScore).mockResolvedValue(createNpmsData());
+      vi.mocked(mockOsvClient.fetchVulnerabilities).mockResolvedValue([
+        createVuln("critical"),
+        createVuln("critical"),
+        createVuln("critical"),
+      ]);
 
       const result = await service.calculate("many-vulns-package");
 
@@ -357,7 +461,7 @@ describe("HealthService", () => {
   });
 
   describe("overall score calculation", () => {
-    it("should weight scores correctly (40% maint, 20% pop, 20% act, 20% sec)", async () => {
+    it("weights scores: 35% maint, 15% pop, 20% act, 30% sec", async () => {
       vi.mocked(mockCache.get).mockResolvedValue(null);
       vi.mocked(mockPackageRepo.findByName).mockResolvedValue(
         createPackageMetadata({
@@ -368,14 +472,13 @@ describe("HealthService", () => {
         createNpmsData({
           downloads: { weekly: 1000000 },
           github: { issues: { openCount: 0, totalCount: 0 } },
-          vulnerabilities: [],
         }),
       );
 
       const result = await service.calculate("perfect-package");
 
       // Maintenance: 100, Popularity: 100, Activity: 50, Security: 100
-      // Overall: 100*0.4 + 100*0.2 + 50*0.2 + 100*0.2 = 40 + 20 + 10 + 20 = 90
+      // Overall: 100*0.35 + 100*0.15 + 50*0.20 + 100*0.30 = 35 + 15 + 10 + 30 = 90
       expect(result.overall).toBe(90);
       expect(result.level).toBe("healthy");
     });

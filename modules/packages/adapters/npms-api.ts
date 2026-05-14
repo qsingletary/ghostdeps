@@ -1,12 +1,14 @@
 import { INpmsClient } from "../interfaces";
-import { NpmsPackageData, Vulnerability } from "../types";
+import { NpmsPackageData } from "../types";
 
 interface NpmsApiResponse {
-  score?: { final?: number; detail?: { quality?: number; popularity?: number; maintenance?: number } };
+  score?: {
+    final?: number;
+    detail?: { quality?: number; popularity?: number; maintenance?: number };
+  };
   collected?: {
     npm?: { downloads?: Array<{ from: string; to: string; count: number }> };
     github?: { issues?: { openCount?: number; count?: number } };
-    source?: { vulnerabilities?: Vulnerability[] };
   };
 }
 
@@ -105,7 +107,6 @@ export class NpmsApiClient implements INpmsClient {
             },
           }
         : undefined,
-      vulnerabilities: data.collected?.source?.vulnerabilities ?? [],
     };
   }
 
@@ -135,7 +136,6 @@ export class NpmsApiClient implements INpmsClient {
       popularity: 0,
       maintenance: 0,
       downloads: { weekly: 0 },
-      vulnerabilities: [],
     };
   }
 }

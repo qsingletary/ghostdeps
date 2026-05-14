@@ -2,6 +2,7 @@ import {
   ICache,
   INpmClient,
   INpmsClient,
+  IOsvClient,
   IPackageRepository,
   IHealthService,
   IDependencyResolver,
@@ -12,6 +13,7 @@ import {
   RedisCache,
   NpmRegistryClient,
   NpmsApiClient,
+  OsvClient,
 } from "./adapters";
 import { PackageRepository } from "./repositories";
 import { HealthService, DependencyResolver } from "./services";
@@ -26,6 +28,7 @@ class Container {
   private cache: ICache | null = null;
   private npmClient: INpmClient | null = null;
   private npmsClient: INpmsClient | null = null;
+  private osvClient: IOsvClient | null = null;
   private packageRepository: IPackageRepository | null = null;
   private healthService: IHealthService | null = null;
   private dependencyResolver: IDependencyResolver | null = null;
@@ -61,6 +64,16 @@ class Container {
   }
 
   /**
+   * Get or create OSV.dev vulnerability client
+   */
+  getOsvClient(): IOsvClient {
+    if (!this.osvClient) {
+      this.osvClient = new OsvClient();
+    }
+    return this.osvClient;
+  }
+
+  /**
    * Get or create package repository
    */
   getPackageRepository(): IPackageRepository {
@@ -81,6 +94,7 @@ class Container {
       this.healthService = new HealthService(
         this.getPackageRepository(),
         this.getNpmsClient(),
+        this.getOsvClient(),
         this.getCache(),
       );
     }
@@ -108,6 +122,7 @@ class Container {
     this.cache = null;
     this.npmClient = null;
     this.npmsClient = null;
+    this.osvClient = null;
     this.packageRepository = null;
     this.healthService = null;
     this.dependencyResolver = null;

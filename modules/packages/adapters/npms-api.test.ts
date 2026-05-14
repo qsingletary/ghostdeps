@@ -20,9 +20,6 @@ describe("NpmsApiClient", () => {
             ],
           },
           github: { issues: { openCount: 10, count: 100 } },
-          source: {
-            vulnerabilities: [{ id: "1", severity: "high", title: "Test vuln" }],
-          },
         },
       };
 
@@ -39,7 +36,6 @@ describe("NpmsApiClient", () => {
       expect(result.maintenance).toBe(0.85);
       expect(result.github?.issues.openCount).toBe(10);
       expect(result.github?.issues.totalCount).toBe(100);
-      expect(result.vulnerabilities).toHaveLength(1);
     });
 
     it("should return empty data on HTTP errors", async () => {
@@ -52,7 +48,6 @@ describe("NpmsApiClient", () => {
 
       expect(result.score).toBe(0);
       expect(result.downloads.weekly).toBe(0);
-      expect(result.vulnerabilities).toEqual([]);
     });
 
     it("should return empty data on fetch errors", async () => {
