@@ -29,8 +29,11 @@ describe("GET /api/health/[name]", () => {
     });
   });
 
-  const createRequest = (): NextRequest => {
-    return new NextRequest("http://localhost/api/health/lodash");
+  const createRequest = (version?: string): NextRequest => {
+    const url = version
+      ? `http://localhost/api/health/lodash?version=${version}`
+      : "http://localhost/api/health/lodash";
+    return new NextRequest(url);
   };
 
   const createParams = (name: string) => ({
@@ -61,7 +64,15 @@ describe("GET /api/health/[name]", () => {
     const data = await response.json();
 
     expect(data).toEqual(score);
-    expect(mockCalculate).toHaveBeenCalledWith("lodash");
+    expect(mockCalculate).toHaveBeenCalledWith("lodash", undefined);
+  });
+
+  it("should pass the version query parameter to the health service", async () => {
+    mockCalculate.mockResolvedValue(createHealthScore());
+
+    await GET(createRequest("4.17.20"), createParams("lodash"));
+
+    expect(mockCalculate).toHaveBeenCalledWith("lodash", "4.17.20");
   });
 
   it("should decode URL-encoded package names", async () => {
@@ -69,7 +80,7 @@ describe("GET /api/health/[name]", () => {
 
     await GET(createRequest(), createParams("%40org%2Fpackage"));
 
-    expect(mockCalculate).toHaveBeenCalledWith("@org/package");
+    expect(mockCalculate).toHaveBeenCalledWith("@org/package", undefined);
   });
 
   it("should handle PackageNotFoundError", async () => {

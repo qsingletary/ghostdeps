@@ -2,6 +2,7 @@ import {
   IHealthService,
   IPackageRepository,
   INpmsClient,
+  IOsvClient,
   ICache,
   CacheKeys,
   CacheTTL,
@@ -12,36 +13,39 @@ import {
   HealthBreakdown,
   NpmPackageMetadata,
   NpmsPackageData,
+  Vulnerability,
 } from "../types";
 
 const WEIGHTS = {
-  maintenance: 0.4,
-  popularity: 0.2,
+  maintenance: 0.35,
+  popularity: 0.15,
   activity: 0.2,
-  security: 0.2,
+  security: 0.3,
 } as const;
 
 export class HealthService implements IHealthService {
   constructor(
     private readonly packageRepository: IPackageRepository,
     private readonly npmsClient: INpmsClient,
+    private readonly osvClient: IOsvClient,
     private readonly cache: ICache,
   ) {}
 
-  async calculate(name: string): Promise<HealthScore> {
-    const cacheKey = CacheKeys.health(name);
+  async calculate(name: string, version?: string): Promise<HealthScore> {
+    const cacheKey = CacheKeys.health(name, version);
 
     const cached = await this.cache.get<HealthScore>(cacheKey);
     if (cached) {
       return cached;
     }
 
-    const [packageData, npmsData] = await Promise.all([
+    const [packageData, npmsData, vulnerabilities] = await Promise.all([
       this.packageRepository.findByName(name).catch(() => null),
       this.npmsClient.fetchScore(name),
+      this.osvClient.fetchVulnerabilities(name, version),
     ]);
 
-    const score = this.computeScore(packageData, npmsData);
+    const score = this.computeScore(packageData, npmsData, vulnerabilities);
 
     await this.cache.set(cacheKey, score, CacheTTL.HEALTH);
 
@@ -65,7 +69,12 @@ export class HealthService implements IHealthService {
       return results;
     }
 
-    const npmsDataMap = await this.npmsClient.fetchScoresBatch(uncached);
+    const [npmsDataMap, vulnsMap] = await Promise.all([
+      this.npmsClient.fetchScoresBatch(uncached),
+      this.osvClient.fetchVulnerabilitiesBatch(
+        uncached.map((name) => ({ name })),
+      ),
+    ]);
 
     await Promise.all(
       uncached.map(async (name) => {
@@ -73,7 +82,8 @@ export class HealthService implements IHealthService {
           .findByName(name)
           .catch(() => null);
         const npmsData = npmsDataMap.get(name) ?? this.emptyNpmsData();
-        const score = this.computeScore(packageData, npmsData);
+        const vulnerabilities = vulnsMap.get(name) ?? [];
+        const score = this.computeScore(packageData, npmsData, vulnerabilities);
 
         await this.cache.set(CacheKeys.health(name), score, CacheTTL.HEALTH);
         results.set(name, score);
@@ -93,12 +103,13 @@ export class HealthService implements IHealthService {
   private computeScore(
     packageData: NpmPackageMetadata | null,
     npmsData: NpmsPackageData,
+    vulnerabilities: Vulnerability[],
   ): HealthScore {
     const breakdown: HealthBreakdown = {
       maintenance: this.calcMaintenance(packageData),
       popularity: this.calcPopularity(npmsData),
       activity: this.calcActivity(npmsData),
-      security: this.calcSecurity(npmsData),
+      security: this.calcSecurity(vulnerabilities),
     };
 
     const overall = Math.round(
@@ -112,7 +123,7 @@ export class HealthService implements IHealthService {
       overall,
       level: this.getLevel(overall),
       breakdown,
-      vulnerabilities: npmsData.vulnerabilities,
+      vulnerabilities,
       lastPublish: packageData?.time?.modified ?? "",
       weeklyDownloads: npmsData.downloads.weekly,
       openIssues: npmsData.github?.issues.openCount ?? 0,
@@ -193,11 +204,14 @@ export class HealthService implements IHealthService {
   }
 
   /**
-   * Security score based on known vulnerabilities
+   * Security score based on known vulnerabilities, weighted by severity.
+   *
+   *   critical: -40
+   *   high:     -25
+   *   moderate: -10
+   *   low:       -5
    */
-  private calcSecurity(npmsData: NpmsPackageData): number {
-    const vulns = npmsData.vulnerabilities;
-
+  private calcSecurity(vulns: Vulnerability[]): number {
     if (vulns.length === 0) return 100;
 
     const penalties: Record<string, number> = {
@@ -228,7 +242,6 @@ export class HealthService implements IHealthService {
       popularity: 0,
       maintenance: 0,
       downloads: { weekly: 0 },
-      vulnerabilities: [],
     };
   }
 }

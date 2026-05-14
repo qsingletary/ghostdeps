@@ -48,6 +48,22 @@ describe("Container", () => {
     });
   });
 
+  describe("getOsvClient", () => {
+    it("should return the same osv client instance", () => {
+      const client1 = container.getOsvClient();
+      const client2 = container.getOsvClient();
+
+      expect(client1).toBe(client2);
+    });
+
+    it("should expose vulnerability fetch methods", () => {
+      const client = container.getOsvClient();
+
+      expect(client.fetchVulnerabilities).toBeDefined();
+      expect(client.fetchVulnerabilitiesBatch).toBeDefined();
+    });
+  });
+
   describe("getPackageRepository", () => {
     it("should return the same repository instance", () => {
       const repo1 = container.getPackageRepository();
@@ -114,6 +130,7 @@ describe("Container", () => {
       container.getCache();
       container.getNpmClient();
       container.getNpmsClient();
+      container.getOsvClient();
       container.getPackageRepository();
       container.getHealthService();
       container.getDependencyResolver();
@@ -149,6 +166,7 @@ describe("Container", () => {
       expect(container.getCache()).toBeDefined();
       expect(container.getNpmClient()).toBeDefined();
       expect(container.getNpmsClient()).toBeDefined();
+      expect(container.getOsvClient()).toBeDefined();
       expect(container.getPackageRepository()).toBeDefined();
       expect(container.getHealthService()).toBeDefined();
     });

@@ -85,7 +85,10 @@ export class DependencyResolver implements IDependencyResolver {
 
       this.inProgress.add(nodeId);
 
-      const health = await this.healthService.calculate(metadata.name);
+      const health = await this.healthService.calculate(
+        metadata.name,
+        metadata.version,
+      );
 
       const node: DependencyNode = {
         id: nodeId,
