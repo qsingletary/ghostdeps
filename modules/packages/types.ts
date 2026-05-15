@@ -45,6 +45,18 @@ export interface BundleSize {
   isModuleType: boolean;
 }
 
+export type LicenseCategory =
+  | "permissive"
+  | "weak-copyleft"
+  | "strong-copyleft"
+  | "proprietary"
+  | "unknown";
+
+export interface LicenseInfo {
+  spdx: string;
+  category: LicenseCategory;
+}
+
 export interface Vulnerability {
   id: string;
   aliases: string[];
@@ -83,6 +95,7 @@ export interface HealthScore {
   breakdown: HealthBreakdown;
   vulnerabilities: Vulnerability[];
   bundle: BundleSize | null;
+  license: LicenseInfo;
   lastPublish: string;
   weeklyDownloads: number;
   openIssues: number;

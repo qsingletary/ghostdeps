@@ -32,6 +32,7 @@ const createHealthScore = (overall = 85): HealthScore => ({
   },
   vulnerabilities: [],
   bundle: null,
+  license: { spdx: "MIT", category: "permissive" },
   lastPublish: "2024-01-01",
   weeklyDownloads: 50000,
   openIssues: 10,

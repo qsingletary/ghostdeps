@@ -17,6 +17,7 @@ import {
   Vulnerability,
   BundleSize,
 } from "../types";
+import { classifyLicense } from "../utils/license-classifier";
 
 const WEIGHTS = {
   maintenance: 0.3,
@@ -142,6 +143,7 @@ export class HealthService implements IHealthService {
       breakdown,
       vulnerabilities,
       bundle,
+      license: classifyLicense(packageData?.license),
       lastPublish: packageData?.time?.modified ?? "",
       weeklyDownloads: npmsData.downloads.weekly,
       openIssues: npmsData.github?.issues.openCount ?? 0,

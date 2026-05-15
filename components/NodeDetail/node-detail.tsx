@@ -1,5 +1,5 @@
 "use client";
-import type { DependencyNode } from "@/modules/packages";
+import type { DependencyNode, LicenseInfo } from "@/modules/packages";
 import { HealthBadge, BookmarkButton } from "@/components";
 import VulnerabilityList from "./vulnerability-list";
 
@@ -53,7 +53,12 @@ export default function NodeDetail({ node, onClose }: NodeDetailProps) {
                   healthLevel={health.level}
                 />
               </div>
-              <p className="text-xs text-muted sm:text-sm">{node.version}</p>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted sm:text-sm">
+                <span>{node.version}</span>
+                {node.health.license && node.health.license.spdx && (
+                  <LicensePill license={node.health.license} />
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -173,6 +178,27 @@ export default function NodeDetail({ node, onClose }: NodeDetailProps) {
         </div>
       </div>
     </>
+  );
+}
+
+function LicensePill({ license }: { license: LicenseInfo }) {
+  const cls =
+    license.category === "permissive"
+      ? "bg-healthy/10 text-healthy"
+      : license.category === "weak-copyleft"
+        ? "bg-warning/10 text-warning"
+        : license.category === "strong-copyleft" ||
+            license.category === "proprietary"
+          ? "bg-critical/10 text-critical"
+          : "bg-muted/10 text-muted";
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 font-mono text-[10px] font-medium sm:text-[11px] ${cls}`}
+      title={`License: ${license.category}`}
+    >
+      {license.spdx}
+    </span>
   );
 }
 

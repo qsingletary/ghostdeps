@@ -122,6 +122,7 @@ describe("HealthService", () => {
         breakdown: { maintenance: 90, popularity: 80, activity: 85, security: 100, size: 90 },
         vulnerabilities: [],
         bundle: null,
+        license: { spdx: "MIT", category: "permissive" },
         lastPublish: "2024-01-01",
         weeklyDownloads: 50000,
         openIssues: 10,
@@ -216,6 +217,7 @@ describe("HealthService", () => {
         breakdown: { maintenance: 90, popularity: 80, activity: 85, security: 100, size: 90 },
         vulnerabilities: [],
         bundle: null,
+        license: { spdx: "MIT", category: "permissive" },
         lastPublish: "",
         weeklyDownloads: 0,
         openIssues: 0,
@@ -595,6 +597,47 @@ describe("HealthService", () => {
 
       const result = await service.calculate("with-bundle");
       expect(result.bundle).toEqual(bundle);
+    });
+  });
+
+  describe("license", () => {
+    it("populates license info from package metadata", async () => {
+      vi.mocked(mockCache.get).mockResolvedValue(null);
+      vi.mocked(mockPackageRepo.findByName).mockResolvedValue(
+        createPackageMetadata({ license: "Apache-2.0" }),
+      );
+      vi.mocked(mockNpmsClient.fetchScore).mockResolvedValue(createNpmsData());
+
+      const result = await service.calculate("apache-pkg");
+
+      expect(result.license).toEqual({
+        spdx: "Apache-2.0",
+        category: "permissive",
+      });
+    });
+
+    it("classifies GPL packages as strong-copyleft", async () => {
+      vi.mocked(mockCache.get).mockResolvedValue(null);
+      vi.mocked(mockPackageRepo.findByName).mockResolvedValue(
+        createPackageMetadata({ license: "GPL-3.0-or-later" }),
+      );
+      vi.mocked(mockNpmsClient.fetchScore).mockResolvedValue(createNpmsData());
+
+      const result = await service.calculate("gpl-pkg");
+
+      expect(result.license.category).toBe("strong-copyleft");
+    });
+
+    it("defaults to unknown when package.json has no license field", async () => {
+      vi.mocked(mockCache.get).mockResolvedValue(null);
+      vi.mocked(mockPackageRepo.findByName).mockResolvedValue(
+        createPackageMetadata({ license: undefined }),
+      );
+      vi.mocked(mockNpmsClient.fetchScore).mockResolvedValue(createNpmsData());
+
+      const result = await service.calculate("nolicense");
+
+      expect(result.license).toEqual({ spdx: "", category: "unknown" });
     });
   });
 

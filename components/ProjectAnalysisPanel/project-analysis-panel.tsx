@@ -9,6 +9,7 @@ import FileDropZone from "./file-drop-zone";
 import PackageList from "./package-list";
 import ProjectSummary from "./project-summary";
 import FilterControls from "./filter-controls";
+import LicenseAudit from "./license-audit";
 
 interface ProjectAnalysisPanelProps {
   isVisible: boolean;
@@ -112,6 +113,7 @@ export default function ProjectAnalysisPanel({
               )}
 
               <ProjectSummary />
+              <LicenseAudit />
               <FilterControls />
               <PackageList
                 packages={packages}

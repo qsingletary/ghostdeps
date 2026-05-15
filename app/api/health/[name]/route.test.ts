@@ -52,6 +52,7 @@ describe("GET /api/health/[name]", () => {
     },
     vulnerabilities: [],
     bundle: null,
+    license: { spdx: "MIT", category: "permissive" } as const,
     lastPublish: "2024-01-01",
     weeklyDownloads: 50000,
     openIssues: 10,

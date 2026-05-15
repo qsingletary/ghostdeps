@@ -9,6 +9,8 @@ export type {
   VulnerabilityReference,
   AffectedRange,
   BundleSize,
+  LicenseCategory,
+  LicenseInfo,
   HealthLevel,
   HealthBreakdown,
   HealthScore,
@@ -40,4 +42,7 @@ export {
   type ParsedPackageJson,
   type ParseError,
   type ParseResult,
+  classifyLicense,
+  categoryLabel,
+  categoryRank,
 } from "./utils";
