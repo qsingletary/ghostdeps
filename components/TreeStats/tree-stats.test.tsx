@@ -14,6 +14,7 @@ describe("TreeStats", () => {
       critical: 10,
       unknown: 0,
     },
+    warningCount: 0,
   };
 
   describe("package stats", () => {
@@ -81,6 +82,7 @@ describe("TreeStats", () => {
           critical: 0,
           unknown: 0,
         },
+        warningCount: 0,
       };
 
       render(<TreeStats stats={zeroStats} />);
@@ -101,6 +103,7 @@ describe("TreeStats", () => {
           critical: 19999,
           unknown: 0,
         },
+        warningCount: 0,
       };
 
       render(<TreeStats stats={largeStats} />);
@@ -120,11 +123,37 @@ describe("TreeStats", () => {
           critical: 0,
           unknown: 0,
         },
+        warningCount: 0,
       };
 
       render(<TreeStats stats={singleStats} />);
 
       expect(screen.getAllByText("1")).toHaveLength(3); // total, unique, healthy
+    });
+  });
+
+  describe("supply-chain warning pill", () => {
+    it("renders the warning pill when warningCount > 0", () => {
+      const statsWithWarnings: TreeStatsType = {
+        ...defaultStats,
+        warningCount: 3,
+      };
+      render(<TreeStats stats={statsWithWarnings} />);
+      expect(screen.getByText(/3 warnings/)).toBeInTheDocument();
+    });
+
+    it("uses singular 'warning' for a single warning", () => {
+      const statsWithOne: TreeStatsType = {
+        ...defaultStats,
+        warningCount: 1,
+      };
+      render(<TreeStats stats={statsWithOne} />);
+      expect(screen.getByText(/1 warning$/)).toBeInTheDocument();
+    });
+
+    it("omits the pill when warningCount is 0", () => {
+      render(<TreeStats stats={defaultStats} />);
+      expect(screen.queryByText(/warning/)).not.toBeInTheDocument();
     });
   });
 

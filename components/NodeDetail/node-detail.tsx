@@ -2,6 +2,7 @@
 import type { DependencyNode, LicenseInfo } from "@/modules/packages";
 import { HealthBadge, BookmarkButton } from "@/components";
 import VulnerabilityList from "./vulnerability-list";
+import WarningPanel from "./warning-panel";
 
 interface ExternalLinkProps {
   href: string;
@@ -86,6 +87,8 @@ export default function NodeDetail({ node, onClose }: NodeDetailProps) {
               </div>
             </div>
           </div>
+
+          <WarningPanel warnings={node.warnings} />
 
           <div>
             <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-muted sm:mb-4 sm:text-xs">

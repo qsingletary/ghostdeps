@@ -36,6 +36,7 @@ describe("useUIStore", () => {
     },
     depth,
     dependencies: [],
+    warnings: [],
   });
 
   describe("initial state", () => {

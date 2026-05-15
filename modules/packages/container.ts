@@ -7,6 +7,7 @@ import {
   IPackageRepository,
   IHealthService,
   IDependencyResolver,
+  ISupplyChainAnalyzer,
 } from "./interfaces";
 
 import {
@@ -18,7 +19,11 @@ import {
   BundlephobiaClient,
 } from "./adapters";
 import { PackageRepository } from "./repositories";
-import { HealthService, DependencyResolver } from "./services";
+import {
+  HealthService,
+  DependencyResolver,
+  SupplyChainAnalyzer,
+} from "./services";
 
 /**
  * Lazy-initialized service container
@@ -34,6 +39,7 @@ class Container {
   private bundleClient: IBundleClient | null = null;
   private packageRepository: IPackageRepository | null = null;
   private healthService: IHealthService | null = null;
+  private supplyChainAnalyzer: ISupplyChainAnalyzer | null = null;
   private dependencyResolver: IDependencyResolver | null = null;
 
   /**
@@ -116,6 +122,16 @@ class Container {
   }
 
   /**
+   * Get or create supply-chain analyzer
+   */
+  getSupplyChainAnalyzer(): ISupplyChainAnalyzer {
+    if (!this.supplyChainAnalyzer) {
+      this.supplyChainAnalyzer = new SupplyChainAnalyzer();
+    }
+    return this.supplyChainAnalyzer;
+  }
+
+  /**
    * Get or create dependency resolver
    */
   getDependencyResolver(): IDependencyResolver {
@@ -123,6 +139,7 @@ class Container {
       this.dependencyResolver = new DependencyResolver(
         this.getPackageRepository(),
         this.getHealthService(),
+        this.getSupplyChainAnalyzer(),
         this.getCache(),
       );
     }
@@ -140,6 +157,7 @@ class Container {
     this.bundleClient = null;
     this.packageRepository = null;
     this.healthService = null;
+    this.supplyChainAnalyzer = null;
     this.dependencyResolver = null;
   }
 

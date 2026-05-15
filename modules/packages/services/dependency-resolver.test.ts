@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { DependencyResolver } from "./dependency-resolver";
-import type { IPackageRepository, IHealthService, ICache } from "../interfaces";
+import type {
+  IPackageRepository,
+  IHealthService,
+  ISupplyChainAnalyzer,
+  ICache,
+} from "../interfaces";
 import type { NpmPackageMetadata, HealthScore, DependencyTree } from "../types";
 
 const createMockCache = (): ICache => ({
@@ -18,6 +23,10 @@ const createMockHealthService = (): IHealthService => ({
   calculate: vi.fn(),
   calculateBatch: vi.fn(),
   getLevel: vi.fn(),
+});
+
+const createMockSupplyChainAnalyzer = (): ISupplyChainAnalyzer => ({
+  analyze: vi.fn().mockReturnValue([]),
 });
 
 const createHealthScore = (overall = 85): HealthScore => ({
@@ -55,12 +64,19 @@ describe("DependencyResolver", () => {
   let mockCache: ICache;
   let mockPackageRepo: IPackageRepository;
   let mockHealthService: IHealthService;
+  let mockAnalyzer: ISupplyChainAnalyzer;
 
   beforeEach(() => {
     mockCache = createMockCache();
     mockPackageRepo = createMockPackageRepository();
     mockHealthService = createMockHealthService();
-    resolver = new DependencyResolver(mockPackageRepo, mockHealthService, mockCache);
+    mockAnalyzer = createMockSupplyChainAnalyzer();
+    resolver = new DependencyResolver(
+      mockPackageRepo,
+      mockHealthService,
+      mockAnalyzer,
+      mockCache,
+    );
   });
 
   describe("resolve", () => {
@@ -73,12 +89,14 @@ describe("DependencyResolver", () => {
           health: createHealthScore(),
           depth: 0,
           dependencies: [],
+          warnings: [],
         },
         stats: {
           totalPackages: 1,
           uniquePackages: 1,
           maxDepth: 0,
           healthDistribution: { healthy: 1, warning: 0, critical: 0, unknown: 0 },
+          warningCount: 0,
         },
         resolvedAt: "2024-01-01T00:00:00Z",
       };
@@ -227,6 +245,54 @@ describe("DependencyResolver", () => {
       // Total packages: root, a, c (from a), b, c (from b) = 5
       // But unique packages considers the tree structure as-is
       expect(result.stats.totalPackages).toBeGreaterThanOrEqual(4);
+    });
+  });
+
+  describe("supply-chain warnings", () => {
+    it("invokes the supply-chain analyzer for each resolved node and attaches the result", async () => {
+      vi.mocked(mockCache.get).mockResolvedValue(null);
+      vi.mocked(mockPackageRepo.findByName).mockResolvedValue(
+        createPackageMetadata("test", "1.0.0", {}),
+      );
+      vi.mocked(mockHealthService.calculate).mockResolvedValue(createHealthScore());
+      const warning = {
+        kind: "typosquat" as const,
+        severity: "high" as const,
+        message: "Looks like react",
+        details: { similarTo: "react", distance: 1 },
+      };
+      vi.mocked(mockAnalyzer.analyze).mockReturnValue([warning]);
+
+      const result = await resolver.resolve("test", "latest", 5);
+
+      expect(mockAnalyzer.analyze).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "test",
+          weeklyDownloads: 50000,
+        }),
+      );
+      expect(result.root.warnings).toEqual([warning]);
+      expect(result.stats.warningCount).toBe(1);
+    });
+
+    it("aggregates warning counts across the whole tree", async () => {
+      vi.mocked(mockCache.get).mockResolvedValue(null);
+      vi.mocked(mockPackageRepo.findByName)
+        .mockResolvedValueOnce(createPackageMetadata("root", "1.0.0", { a: "^1.0.0" }))
+        .mockResolvedValueOnce(createPackageMetadata("a", "1.0.0", {}));
+      vi.mocked(mockHealthService.calculate).mockResolvedValue(createHealthScore());
+      vi.mocked(mockAnalyzer.analyze).mockReturnValue([
+        {
+          kind: "new-popularity",
+          severity: "moderate",
+          message: "fresh + popular",
+        },
+      ]);
+
+      const result = await resolver.resolve("root", "latest", 5);
+
+      // root + a each get one warning
+      expect(result.stats.warningCount).toBe(2);
     });
   });
 
