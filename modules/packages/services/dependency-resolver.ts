@@ -225,6 +225,7 @@ export class DependencyResolver implements IDependencyResolver {
       breakdown: { maintenance: 0, popularity: 0, activity: 0, security: 0, size: 0 },
       vulnerabilities: [],
       bundle: null,
+      license: { spdx: "", category: "unknown" },
       lastPublish: "",
       weeklyDownloads: 0,
       openIssues: 0,

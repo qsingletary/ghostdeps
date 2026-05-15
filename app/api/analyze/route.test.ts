@@ -28,6 +28,7 @@ describe("POST /api/analyze", () => {
     },
     vulnerabilities: [],
     bundle: null,
+    license: { spdx: "MIT", category: "permissive" },
     lastPublish: "2024-01-01",
     weeklyDownloads: 1000,
     openIssues: 0,

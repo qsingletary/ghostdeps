@@ -20,6 +20,7 @@ describe("NodeDetail", () => {
       },
       vulnerabilities: [],
       bundle: null,
+      license: { spdx: "MIT", category: "permissive" },
       lastPublish: "2024-01-01",
       weeklyDownloads: 50000000,
       openIssues: 10,
@@ -246,6 +247,43 @@ describe("NodeDetail", () => {
         "href",
         "https://www.npmjs.com/package/@org/package",
       );
+    });
+  });
+
+  describe("license badge", () => {
+    it("renders the SPDX identifier as a pill in the header", () => {
+      render(<NodeDetail {...defaultProps} />);
+      expect(screen.getByText("MIT")).toBeInTheDocument();
+    });
+
+    it("omits the pill when license is empty / unknown", () => {
+      const node = createNode({
+        health: {
+          ...createNode().health,
+          license: { spdx: "", category: "unknown" },
+        },
+      });
+      const { container } = render(
+        <NodeDetail node={node} onClose={vi.fn()} />,
+      );
+      // No pill rendered (no element with the empty spdx)
+      const pills = container.querySelectorAll('[title^="License:"]');
+      expect(pills.length).toBe(0);
+    });
+
+    it("uses the critical color class for strong-copyleft licenses", () => {
+      const node = createNode({
+        health: {
+          ...createNode().health,
+          license: { spdx: "GPL-3.0", category: "strong-copyleft" },
+        },
+      });
+      const { container } = render(
+        <NodeDetail node={node} onClose={vi.fn()} />,
+      );
+      const pill = container.querySelector('[title="License: strong-copyleft"]');
+      expect(pill).not.toBeNull();
+      expect(pill!.className).toContain("text-critical");
     });
   });
 
