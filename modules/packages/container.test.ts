@@ -64,6 +64,22 @@ describe("Container", () => {
     });
   });
 
+  describe("getBundleClient", () => {
+    it("should return the same bundle client instance", () => {
+      const client1 = container.getBundleClient();
+      const client2 = container.getBundleClient();
+
+      expect(client1).toBe(client2);
+    });
+
+    it("should expose bundle fetch methods", () => {
+      const client = container.getBundleClient();
+
+      expect(client.fetchBundleSize).toBeDefined();
+      expect(client.fetchBundleSizesBatch).toBeDefined();
+    });
+  });
+
   describe("getPackageRepository", () => {
     it("should return the same repository instance", () => {
       const repo1 = container.getPackageRepository();
@@ -131,6 +147,7 @@ describe("Container", () => {
       container.getNpmClient();
       container.getNpmsClient();
       container.getOsvClient();
+      container.getBundleClient();
       container.getPackageRepository();
       container.getHealthService();
       container.getDependencyResolver();
@@ -167,6 +184,7 @@ describe("Container", () => {
       expect(container.getNpmClient()).toBeDefined();
       expect(container.getNpmsClient()).toBeDefined();
       expect(container.getOsvClient()).toBeDefined();
+      expect(container.getBundleClient()).toBeDefined();
       expect(container.getPackageRepository()).toBeDefined();
       expect(container.getHealthService()).toBeDefined();
     });

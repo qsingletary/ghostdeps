@@ -141,7 +141,10 @@ export default function HomePage() {
           {tree && !isResolving && (
             <div className="animate-fade-in flex flex-col">
               <div className="border-b border-border/50 bg-surface/50 px-4 py-3 sm:px-6 sm:py-4">
-                <TreeStats stats={tree.stats} />
+                <TreeStats
+                  stats={tree.stats}
+                  rootBundle={tree.root.health.bundle}
+                />
               </div>
               <DependencyGraph
                 root={tree.root}

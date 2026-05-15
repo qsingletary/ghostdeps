@@ -3,6 +3,7 @@ import {
   IPackageRepository,
   INpmsClient,
   IOsvClient,
+  IBundleClient,
   ICache,
   CacheKeys,
   CacheTTL,
@@ -14,13 +15,15 @@ import {
   NpmPackageMetadata,
   NpmsPackageData,
   Vulnerability,
+  BundleSize,
 } from "../types";
 
 const WEIGHTS = {
-  maintenance: 0.35,
-  popularity: 0.15,
-  activity: 0.2,
+  maintenance: 0.3,
+  popularity: 0.1,
+  activity: 0.15,
   security: 0.3,
+  size: 0.15,
 } as const;
 
 export class HealthService implements IHealthService {
@@ -28,6 +31,7 @@ export class HealthService implements IHealthService {
     private readonly packageRepository: IPackageRepository,
     private readonly npmsClient: INpmsClient,
     private readonly osvClient: IOsvClient,
+    private readonly bundleClient: IBundleClient,
     private readonly cache: ICache,
   ) {}
 
@@ -39,13 +43,14 @@ export class HealthService implements IHealthService {
       return cached;
     }
 
-    const [packageData, npmsData, vulnerabilities] = await Promise.all([
+    const [packageData, npmsData, vulnerabilities, bundle] = await Promise.all([
       this.packageRepository.findByName(name).catch(() => null),
       this.npmsClient.fetchScore(name),
       this.osvClient.fetchVulnerabilities(name, version),
+      this.bundleClient.fetchBundleSize(name, version),
     ]);
 
-    const score = this.computeScore(packageData, npmsData, vulnerabilities);
+    const score = this.computeScore(packageData, npmsData, vulnerabilities, bundle);
 
     await this.cache.set(cacheKey, score, CacheTTL.HEALTH);
 
@@ -69,9 +74,12 @@ export class HealthService implements IHealthService {
       return results;
     }
 
-    const [npmsDataMap, vulnsMap] = await Promise.all([
+    const [npmsDataMap, vulnsMap, bundlesMap] = await Promise.all([
       this.npmsClient.fetchScoresBatch(uncached),
       this.osvClient.fetchVulnerabilitiesBatch(
+        uncached.map((name) => ({ name })),
+      ),
+      this.bundleClient.fetchBundleSizesBatch(
         uncached.map((name) => ({ name })),
       ),
     ]);
@@ -83,7 +91,13 @@ export class HealthService implements IHealthService {
           .catch(() => null);
         const npmsData = npmsDataMap.get(name) ?? this.emptyNpmsData();
         const vulnerabilities = vulnsMap.get(name) ?? [];
-        const score = this.computeScore(packageData, npmsData, vulnerabilities);
+        const bundle = bundlesMap.get(name) ?? null;
+        const score = this.computeScore(
+          packageData,
+          npmsData,
+          vulnerabilities,
+          bundle,
+        );
 
         await this.cache.set(CacheKeys.health(name), score, CacheTTL.HEALTH);
         results.set(name, score);
@@ -104,19 +118,22 @@ export class HealthService implements IHealthService {
     packageData: NpmPackageMetadata | null,
     npmsData: NpmsPackageData,
     vulnerabilities: Vulnerability[],
+    bundle: BundleSize | null,
   ): HealthScore {
     const breakdown: HealthBreakdown = {
       maintenance: this.calcMaintenance(packageData),
       popularity: this.calcPopularity(npmsData),
       activity: this.calcActivity(npmsData),
       security: this.calcSecurity(vulnerabilities),
+      size: this.calcSize(bundle),
     };
 
     const overall = Math.round(
       breakdown.maintenance * WEIGHTS.maintenance +
         breakdown.popularity * WEIGHTS.popularity +
         breakdown.activity * WEIGHTS.activity +
-        breakdown.security * WEIGHTS.security,
+        breakdown.security * WEIGHTS.security +
+        breakdown.size * WEIGHTS.size,
     );
 
     return {
@@ -124,6 +141,7 @@ export class HealthService implements IHealthService {
       level: this.getLevel(overall),
       breakdown,
       vulnerabilities,
+      bundle,
       lastPublish: packageData?.time?.modified ?? "",
       weeklyDownloads: npmsData.downloads.weekly,
       openIssues: npmsData.github?.issues.openCount ?? 0,
@@ -144,7 +162,7 @@ export class HealthService implements IHealthService {
    */
   private calcMaintenance(packageData: NpmPackageMetadata | null): number {
     if (!packageData?.time?.modified) {
-      return 50; // Unknown = neutral
+      return 50;
     }
 
     const modified = new Date(packageData.time.modified);
@@ -191,13 +209,12 @@ export class HealthService implements IHealthService {
     const open = github.issues.openCount;
 
     if (total === 0) {
-      return 50; // No issues = neutral
+      return 50;
     }
 
     const closed = total - open;
     const ratio = closed / total;
 
-    // Bonus for having issues (means people use it)
     const bonus = total > 10 ? 10 : 0;
 
     return Math.min(100, Math.round(ratio * 90 + bonus));
@@ -205,11 +222,6 @@ export class HealthService implements IHealthService {
 
   /**
    * Security score based on known vulnerabilities, weighted by severity.
-   *
-   *   critical: -40
-   *   high:     -25
-   *   moderate: -10
-   *   low:       -5
    */
   private calcSecurity(vulns: Vulnerability[]): number {
     if (vulns.length === 0) return 100;
@@ -227,6 +239,39 @@ export class HealthService implements IHealthService {
     }
 
     return Math.max(0, score);
+  }
+
+  /**
+   * Size score based on gzipped bundle size (lower = better).
+   *
+   *   ≤10KB:     100
+   *   10-50KB:    100 → 80 (linear)
+   *   50-100KB:   80 → 60
+   *   100-250KB:  60 → 40
+   *   250-500KB:  40 → 20
+   *   ≥500KB:     20 → 0
+   *
+   * +5 bonus when the package ships ESM with no side effects
+   * (tree-shakable). Unknown / unparseable bundle data scores 50 (neutral).
+   */
+  private calcSize(bundle: BundleSize | null): number {
+    if (!bundle || bundle.gzipped === 0) return 50;
+
+    const kb = bundle.gzipped / 1024;
+    let score: number;
+
+    if (kb <= 10) score = 100;
+    else if (kb <= 50) score = Math.round(100 - ((kb - 10) / 40) * 20);
+    else if (kb <= 100) score = Math.round(80 - ((kb - 50) / 50) * 20);
+    else if (kb <= 250) score = Math.round(60 - ((kb - 100) / 150) * 20);
+    else if (kb <= 500) score = Math.round(40 - ((kb - 250) / 250) * 20);
+    else score = Math.max(0, Math.round(20 - ((kb - 500) / 500) * 20));
+
+    if (bundle.hasJSModule && !bundle.hasSideEffects) {
+      score = Math.min(100, score + 5);
+    }
+
+    return score;
   }
 
   private daysSince(date: Date): number {

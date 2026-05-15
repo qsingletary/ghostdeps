@@ -16,8 +16,10 @@ describe("NodeDetail", () => {
         popularity: 80,
         activity: 85,
         security: 100,
+        size: 90,
       },
       vulnerabilities: [],
+      bundle: null,
       lastPublish: "2024-01-01",
       weeklyDownloads: 50000000,
       openIssues: 10,
@@ -244,6 +246,76 @@ describe("NodeDetail", () => {
         "href",
         "https://www.npmjs.com/package/@org/package",
       );
+    });
+  });
+
+  describe("bundle stats", () => {
+    it("shows '—' for bundle gzip and tree-shake when bundle is null", () => {
+      render(<NodeDetail {...defaultProps} />);
+      expect(screen.getByText("Bundle (gzip)")).toBeInTheDocument();
+      expect(screen.getByText("Tree-shake")).toBeInTheDocument();
+      // Two '—' rendered (one for each unknown bundle stat)
+      expect(screen.getAllByText("—")).toHaveLength(2);
+    });
+
+    it("displays formatted gzipped bundle size when present", () => {
+      const node = createNode({
+        health: {
+          ...createNode().health,
+          bundle: {
+            minified: 71_642,
+            gzipped: 24_576,
+            dependencyCount: 0,
+            hasJSModule: true,
+            hasSideEffects: false,
+            isModuleType: true,
+          },
+        },
+      });
+      render(<NodeDetail node={node} onClose={vi.fn()} />);
+
+      expect(screen.getByText("24.0KB")).toBeInTheDocument();
+    });
+
+    it("shows 'Yes' for tree-shake when ESM + no side effects", () => {
+      const node = createNode({
+        health: {
+          ...createNode().health,
+          bundle: {
+            minified: 1000,
+            gzipped: 500,
+            dependencyCount: 0,
+            hasJSModule: true,
+            hasSideEffects: false,
+            isModuleType: true,
+          },
+        },
+      });
+      render(<NodeDetail node={node} onClose={vi.fn()} />);
+      expect(screen.getByText("Yes")).toBeInTheDocument();
+    });
+
+    it("shows 'No' for tree-shake when side effects are declared", () => {
+      const node = createNode({
+        health: {
+          ...createNode().health,
+          bundle: {
+            minified: 1000,
+            gzipped: 500,
+            dependencyCount: 0,
+            hasJSModule: true,
+            hasSideEffects: true,
+            isModuleType: true,
+          },
+        },
+      });
+      render(<NodeDetail node={node} onClose={vi.fn()} />);
+      expect(screen.getByText("No")).toBeInTheDocument();
+    });
+
+    it("renders the new Size breakdown row", () => {
+      render(<NodeDetail {...defaultProps} />);
+      expect(screen.getByText("Size")).toBeInTheDocument();
     });
   });
 

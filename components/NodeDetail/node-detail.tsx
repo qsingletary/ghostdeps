@@ -107,6 +107,11 @@ export default function NodeDetail({ node, onClose }: NodeDetailProps) {
                 value={health.breakdown.security}
                 icon={<ShieldIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
               />
+              <BreakdownRow
+                label="Size"
+                value={health.breakdown.size}
+                icon={<BoxIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
+              />
             </div>
           </div>
 
@@ -126,6 +131,22 @@ export default function NodeDetail({ node, onClose }: NodeDetailProps) {
                 label="Open Issues"
                 value={String(health.openIssues)}
                 icon={<IssueIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
+              />
+              <StatCard
+                label="Bundle (gzip)"
+                value={health.bundle ? formatBytes(health.bundle.gzipped) : "—"}
+                icon={<BoxIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
+              />
+              <StatCard
+                label="Tree-shake"
+                value={
+                  health.bundle
+                    ? health.bundle.hasJSModule && !health.bundle.hasSideEffects
+                      ? "Yes"
+                      : "No"
+                    : "—"
+                }
+                icon={<ScissorsIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
               />
             </div>
           </div>
@@ -227,6 +248,12 @@ function formatNumber(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  return `${bytes}B`;
 }
 
 function XIcon({ className }: { className?: string }) {
@@ -354,6 +381,43 @@ function IssueIcon({ className }: { className?: string }) {
       <circle cx="12" cy="12" r="10" />
       <line x1="12" y1="8" x2="12" y2="12" />
       <line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
+  );
+}
+
+function BoxIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+      <path d="M3.29 7 12 12l8.71-5M12 22V12" />
+    </svg>
+  );
+}
+
+function ScissorsIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="6" cy="6" r="3" />
+      <circle cx="6" cy="18" r="3" />
+      <line x1="20" y1="4" x2="8.12" y2="15.88" />
+      <line x1="14.47" y1="14.48" x2="20" y2="20" />
+      <line x1="8.12" y1="8.12" x2="12" y2="12" />
     </svg>
   );
 }
