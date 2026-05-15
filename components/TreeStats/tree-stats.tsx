@@ -53,7 +53,24 @@ export default function TreeStats({ stats, rootBundle }: TreeStatsProps) {
           count={stats.healthDistribution.critical}
           label="Critical"
         />
+        {stats.warningCount > 0 && (
+          <WarningCountPill count={stats.warningCount} />
+        )}
       </div>
+    </div>
+  );
+}
+
+function WarningCountPill({ count }: { count: number }) {
+  return (
+    <div
+      className="flex items-center gap-1.5 rounded-full bg-warning/10 px-2 py-0.5 text-warning sm:gap-2 sm:px-2.5 sm:py-1"
+      title="Supply-chain warnings across the tree"
+    >
+      <AlertIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+      <span className="text-[10px] font-semibold uppercase tracking-wider sm:text-[11px]">
+        {count} warning{count === 1 ? "" : "s"}
+      </span>
     </div>
   );
 }
@@ -184,6 +201,24 @@ function BoxIcon({ className }: { className?: string }) {
     >
       <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
       <path d="M3.29 7 12 12l8.71-5M12 22V12" />
+    </svg>
+  );
+}
+
+function AlertIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+      <line x1="12" y1="9" x2="12" y2="13" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
     </svg>
   );
 }

@@ -28,6 +28,7 @@ describe("NodeDetail", () => {
     },
     depth: 0,
     dependencies: [],
+    warnings: [],
     ...overrides,
   });
 

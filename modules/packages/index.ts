@@ -11,6 +11,9 @@ export type {
   BundleSize,
   LicenseCategory,
   LicenseInfo,
+  SupplyChainWarning,
+  WarningKind,
+  WarningSeverity,
   HealthLevel,
   HealthBreakdown,
   HealthScore,
@@ -35,6 +38,7 @@ export type {
   IPackageRepository,
   IHealthService,
   IDependencyResolver,
+  ISupplyChainAnalyzer,
 } from "./interfaces";
 
 export {

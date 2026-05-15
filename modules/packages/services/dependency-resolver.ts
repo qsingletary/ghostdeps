@@ -2,6 +2,7 @@ import {
   IDependencyResolver,
   IPackageRepository,
   IHealthService,
+  ISupplyChainAnalyzer,
   ICache,
   CacheKeys,
   CacheTTL,
@@ -25,6 +26,7 @@ export class DependencyResolver implements IDependencyResolver {
   constructor(
     private readonly packageRepository: IPackageRepository,
     private readonly healthService: IHealthService,
+    private readonly supplyChainAnalyzer: ISupplyChainAnalyzer,
     private readonly cache: ICache,
   ) {}
 
@@ -90,6 +92,12 @@ export class DependencyResolver implements IDependencyResolver {
         metadata.version,
       );
 
+      const warnings = this.supplyChainAnalyzer.analyze({
+        name: metadata.name,
+        metadata,
+        weeklyDownloads: health.weeklyDownloads,
+      });
+
       const node: DependencyNode = {
         id: nodeId,
         name: metadata.name,
@@ -97,6 +105,7 @@ export class DependencyResolver implements IDependencyResolver {
         health,
         depth,
         dependencies: [],
+        warnings,
         parent,
       };
 
@@ -160,6 +169,7 @@ export class DependencyResolver implements IDependencyResolver {
       health: this.emptyHealth(),
       depth,
       dependencies: [],
+      warnings: [],
       parent,
       isCircular: true,
     };
@@ -178,6 +188,7 @@ export class DependencyResolver implements IDependencyResolver {
       health: this.emptyHealth(),
       depth,
       dependencies: [],
+      warnings: [],
       parent,
       hasError: true,
     };
@@ -196,11 +207,13 @@ export class DependencyResolver implements IDependencyResolver {
     };
     let total = 0;
     let maxDepth = 0;
+    let warningCount = 0;
 
     const traverse = (node: DependencyNode) => {
       total++;
       seen.add(node.id);
       distribution[node.health.level]++;
+      warningCount += node.warnings.length;
       maxDepth = Math.max(maxDepth, node.depth);
 
       for (const child of node.dependencies) {
@@ -215,6 +228,7 @@ export class DependencyResolver implements IDependencyResolver {
       uniquePackages: seen.size,
       maxDepth,
       healthDistribution: distribution,
+      warningCount,
     };
   }
 

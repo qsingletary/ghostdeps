@@ -8,3 +8,7 @@ export type { IBundleClient } from "./bundle-client";
 export type { IPackageRepository } from "./package-repository";
 export type { IHealthService } from "./health-service";
 export type { IDependencyResolver } from "./dependency-resolver";
+export type {
+  ISupplyChainAnalyzer,
+  AnalyzeInput,
+} from "./supply-chain-analyzer";

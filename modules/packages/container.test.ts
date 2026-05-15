@@ -80,6 +80,20 @@ describe("Container", () => {
     });
   });
 
+  describe("getSupplyChainAnalyzer", () => {
+    it("should return the same analyzer instance", () => {
+      const a1 = container.getSupplyChainAnalyzer();
+      const a2 = container.getSupplyChainAnalyzer();
+
+      expect(a1).toBe(a2);
+    });
+
+    it("should expose an analyze method", () => {
+      const analyzer = container.getSupplyChainAnalyzer();
+      expect(analyzer.analyze).toBeDefined();
+    });
+  });
+
   describe("getPackageRepository", () => {
     it("should return the same repository instance", () => {
       const repo1 = container.getPackageRepository();
@@ -148,6 +162,7 @@ describe("Container", () => {
       container.getNpmsClient();
       container.getOsvClient();
       container.getBundleClient();
+      container.getSupplyChainAnalyzer();
       container.getPackageRepository();
       container.getHealthService();
       container.getDependencyResolver();
@@ -185,6 +200,7 @@ describe("Container", () => {
       expect(container.getNpmsClient()).toBeDefined();
       expect(container.getOsvClient()).toBeDefined();
       expect(container.getBundleClient()).toBeDefined();
+      expect(container.getSupplyChainAnalyzer()).toBeDefined();
       expect(container.getPackageRepository()).toBeDefined();
       expect(container.getHealthService()).toBeDefined();
     });

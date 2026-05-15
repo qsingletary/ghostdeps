@@ -57,6 +57,20 @@ export interface LicenseInfo {
   category: LicenseCategory;
 }
 
+export type WarningKind =
+  | "new-popularity"
+  | "single-maintainer-new"
+  | "typosquat";
+
+export type WarningSeverity = "low" | "moderate" | "high";
+
+export interface SupplyChainWarning {
+  kind: WarningKind;
+  severity: WarningSeverity;
+  message: string;
+  details?: Record<string, string | number>;
+}
+
 export interface Vulnerability {
   id: string;
   aliases: string[];
@@ -109,6 +123,7 @@ export interface DependencyNode {
   health: HealthScore;
   depth: number;
   dependencies: DependencyNode[];
+  warnings: SupplyChainWarning[];
   parent?: string;
   isCircular?: boolean;
   hasError?: boolean;
@@ -125,4 +140,5 @@ export interface TreeStats {
   uniquePackages: number;
   maxDepth: number;
   healthDistribution: Record<HealthLevel, number>;
+  warningCount: number;
 }
